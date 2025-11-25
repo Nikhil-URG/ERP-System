@@ -35,11 +35,3 @@ docker-compose.override.yml
 
 # Misc
 *.pyc
-
-# GEMINI
-GEMINI.md
-GEMINI2.md
-GEMINI*.md
-
-# Vite frontend
-frontend_old/
