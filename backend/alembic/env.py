@@ -26,7 +26,7 @@ load_dotenv(os.path.join(os.getcwd(), '.env'))
 
 # Import Base from your FastAPI app's db.py
 from app.db import Base
-from app.models import User # Import all models here
+from app.models import User, Attendance # Import all models here
 
 target_metadata = Base.metadata
 

@@ -1,18 +1,19 @@
 from fastapi import FastAPI
 from dotenv import load_dotenv
-import os
+from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import users
+from .routers import users, auth, admin, user
 from .db import engine, Base
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+load_dotenv()
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
 origins = [
     "http://localhost:5173",
-    "http://127.0.0.1:5173"
+    "http://127.0.0.1:5173",
 ]
 
 app.add_middleware(
@@ -23,14 +24,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-load_dotenv()
-
-Base.metadata.create_all(bind=engine)
-
-# app = FastAPI()
-
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the FastAPI ERP Backend!"}
 
 app.include_router(users.router, prefix="/users", tags=["users"])
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
+app.include_router(admin.router, prefix="/admin", tags=["admin"])
+app.include_router(user.router, prefix="/user", tags=["user"])
