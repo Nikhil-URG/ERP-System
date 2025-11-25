@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import UserDashboard from './pages/UserDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import UsersPage from './pages/UsersPage'; // Import the new UsersPage
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -29,6 +30,14 @@ const App = () => {
           element={
             <PrivateRoute>
               <AdminDashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <PrivateRoute>
+              <UsersPage />
             </PrivateRoute>
           }
         />

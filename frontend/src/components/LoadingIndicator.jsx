@@ -1,10 +1,11 @@
 import React from 'react';
+import { CircularProgress, Box } from '@mui/material';
 
 const LoadingIndicator = () => {
   return (
-    <div className="flex items-center justify-center">
-      <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
-    </div>
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <CircularProgress color="primary" />
+    </Box>
   );
 };
 

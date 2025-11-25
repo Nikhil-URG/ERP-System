@@ -1,43 +1,39 @@
 import React, { useState } from 'react';
-import { Link as ReactRouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
-  // FormControl,
-  FormLabel,
-  Input,
-  Stack,
-  Heading,
-  Text,
+  TextField,
+  Typography,
+  Snackbar,
+  Alert,
+  CircularProgress,
   Link,
-  useToast,
-  Spinner,
-  Center
-} from "@chakra-ui/react";
-
-import { FormControl } from '@chakra-ui/react';
-
+  Stack,
+} from '@mui/material';
+import { styled } from '@mui/material/styles';
 import apiClient from '../api/client';
 
-const GlassBox = ({ children, ...props }) => (
-  <Box
-    bg="rgba(255, 255, 255, 0.1)"
-    backdropFilter="blur(10px)"
-    border="1px solid rgba(255, 255, 255, 0.2)"
-    borderRadius="xl"
-    boxShadow="lg"
-    p={8}
-    {...props}
-  >
-    {children}
-  </Box>
-);
+const GlassBox = styled(Box)(({ theme }) => ({
+  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  backdropFilter: 'blur(10px)',
+  border: '1px solid rgba(255, 255, 255, 0.2)',
+  borderRadius: theme.shape.borderRadius * 2,
+  boxShadow: theme.shadows[5],
+  padding: theme.spacing(4),
+  position: 'relative',
+  overflow: 'hidden',
+  width: '100%',
+  maxWidth: theme.spacing(50), // maxW="md" approx
+}));
 
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const toast = useToast();
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -49,89 +45,113 @@ const Login = () => {
         new URLSearchParams({ username, password }),
         {
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          }
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
         }
       );
       localStorage.setItem('token', response.data.access_token);
-      toast({
-        title: 'Login Successful',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
+      setSnackbarMessage('Login Successful');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
       navigate('/dashboard');
     } catch (err) {
-      toast({
-        title: 'Login Failed',
-        description: 'Invalid username or password',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
+      setSnackbarMessage('Invalid username or password');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false);
+  };
+
   return (
-    <Center minH="100vh" bgGradient="linear(to-br, #805AD5, #3182CE)">
-      <GlassBox w="full" maxW="md">
-        <Stack spacing={4}>
-          <Heading as="h2" size="xl" textAlign="center" color="whiteAlpha.900">
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(to bottom right, #805AD5, #3182CE)',
+      }}
+    >
+      <GlassBox>
+        <Stack spacing={3}>
+          <Typography variant="h4" component="h1" textAlign="center" color="white">
             Login
-          </Heading>
+          </Typography>
           <form onSubmit={handleLogin}>
-            <Stack spacing={4}>
-              <FormControl id="username">
-                <FormLabel color="whiteAlpha.800">Username</FormLabel>
-                <Input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  color="white"
-                  _placeholder={{ color: 'whiteAlpha.600' }}
-                  borderColor="whiteAlpha.400"
-                  _hover={{ borderColor: 'whiteAlpha.600' }}
-                  _focus={{ borderColor: 'blue.300', boxShadow: '0 0 0 1px #90CDF4' }}
-                />
-              </FormControl>
-              <FormControl id="password">
-                <FormLabel color="whiteAlpha.800">Password</FormLabel>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  color="white"
-                  _placeholder={{ color: 'whiteAlpha.600' }}
-                  borderColor="whiteAlpha.400"
-                  _hover={{ borderColor: 'whiteAlpha.600' }}
-                  _focus={{ borderColor: 'blue.300', boxShadow: '0 0 0 1px #90CDF4' }}
-                />
-              </FormControl>
+            <Stack spacing={2}>
+              <TextField
+                label="Username"
+                variant="outlined"
+                fullWidth
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                sx={{
+                  '& label': { color: 'rgba(255, 255, 255, 0.8)' },
+                  '& .MuiInputBase-input': { color: 'white' },
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.4)' },
+                    '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.6) !important' },
+                    '&.Mui-focused fieldset': { borderColor: '#90CDF4' },
+                  },
+                }}
+              />
+              <TextField
+                label="Password"
+                variant="outlined"
+                type="password"
+                fullWidth
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                sx={{
+                  '& label': { color: 'rgba(255, 255, 255, 0.8)' },
+                  '& .MuiInputBase-input': { color: 'white' },
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.4)' },
+                    '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.6) !important' },
+                    '&.Mui-focused fieldset': { borderColor: '#90CDF4' },
+                  },
+                }}
+              />
               <Button
                 type="submit"
-                colorScheme="blue"
-                isLoading={loading}
-                loadingText="Logging in..."
-                mt={4}
-                bg="blue.500"
-                _hover={{ bg: 'blue.600' }}
-                _active={{ bg: 'blue.700' }}
+                variant="contained"
+                color="primary"
+                fullWidth
+                disabled={loading}
+                startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
+                sx={{
+                  mt: 2,
+                  backgroundColor: '#3182CE',
+                  '&:hover': { backgroundColor: '#2B6CB0' },
+                  color: 'white',
+                }}
               >
-                Login
+                {loading ? 'Logging in...' : 'Login'}
               </Button>
             </Stack>
           </form>
-          <Text textAlign="center" color="whiteAlpha.800">
+          <Typography textAlign="center" color="white">
             Don't have an account?{' '}
-            <Link as={ReactRouterLink} to="/signup" color="blue.300">
+            <Link component={RouterLink} to="/signup" color="inherit" sx={{ textDecoration: 'underline' }}>
               Sign up
             </Link>
-          </Text>
+          </Typography>
         </Stack>
       </GlassBox>
-    </Center>
+      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleSnackbarClose}>
+        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 };
 

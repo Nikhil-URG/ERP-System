@@ -3,37 +3,35 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
-  VStack,
-  Heading,
-  Text,
-  useToast,
-  Spinner,
+  Typography,
+  Snackbar,
+  Alert,
+  CircularProgress,
   Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Tag,
-  Center,
-  SimpleGrid
-} from '@chakra-ui/react';
+  TableContainer,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  Chip,
+  Stack,
+  Grid,
+  Paper
+} from '@mui/material';
+import { styled } from '@mui/material/styles';
 import apiClient from '../api/client';
 
-const GlassBox = ({ children, ...props }) => (
-  <Box
-    bg="rgba(255, 255, 255, 0.1)"
-    backdropFilter="blur(10px)"
-    border="1px solid rgba(255, 255, 255, 0.2)"
-    borderRadius="xl"
-    boxShadow="lg"
-    p={6}
-    color="whiteAlpha.900"
-    {...props}
-  >
-    {children}
-  </Box>
-);
+const GlassPaper = styled(Paper)(({ theme }) => ({
+  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  backdropFilter: 'blur(10px)',
+  border: '1px solid rgba(255, 255, 255, 0.2)',
+  borderRadius: theme.shape.borderRadius * 2,
+  boxShadow: theme.shadows[5],
+  padding: theme.spacing(3),
+  color: theme.palette.common.white,
+  position: 'relative',
+  overflow: 'hidden',
+}));
 
 const UserDashboard = () => {
   const [user, setUser] = useState(null);
@@ -41,7 +39,9 @@ const UserDashboard = () => {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [buttonLoading, setButtonLoading] = useState(false);
-  const toast = useToast();
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const navigate = useNavigate();
 
   const fetchUserData = async () => {
@@ -59,13 +59,9 @@ const UserDashboard = () => {
         localStorage.removeItem('token');
         navigate('/login');
       }
-      toast({
-        title: 'Error loading data.',
-        description: 'Please try logging in again.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      setSnackbarMessage('Error loading data. Please try logging in again.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
     } finally {
       setLoading(false);
     }
@@ -79,22 +75,15 @@ const UserDashboard = () => {
     setButtonLoading(true);
     try {
       await apiClient.post('/user/attendance/check-in');
-      toast({
-        title: 'Checked In!',
-        status: 'success',
-        duration: 2000,
-        isClosable: true,
-      });
+      setSnackbarMessage('Checked In!');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
       await fetchUserData();
     } catch (error) {
       console.error('Check-in failed', error);
-      toast({
-        title: 'Check-in failed.',
-        description: error.response?.data?.detail || 'An error occurred.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
+      setSnackbarMessage(error.response?.data?.detail || 'An error occurred during check-in.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
     } finally {
       setButtonLoading(false);
     }
@@ -104,22 +93,15 @@ const UserDashboard = () => {
     setButtonLoading(true);
     try {
       await apiClient.post('/user/attendance/check-out');
-      toast({
-        title: 'Checked Out!',
-        status: 'success',
-        duration: 2000,
-        isClosable: true,
-      });
+      setSnackbarMessage('Checked Out!');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
       await fetchUserData();
     } catch (error) {
       console.error('Check-out failed', error);
-      toast({
-        title: 'Check-out failed.',
-        description: error.response?.data?.detail || 'An error occurred.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
+      setSnackbarMessage(error.response?.data?.detail || 'An error occurred during check-out.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
     } finally {
       setButtonLoading(false);
     }
@@ -130,75 +112,115 @@ const UserDashboard = () => {
     navigate('/login');
   };
 
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false);
+  };
+
   if (loading) {
     return (
-      <Center minH="100vh" bgGradient="linear(to-br, #805AD5, #3182CE)">
-        <Spinner size="xl" color="white" />
-      </Center>
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          background: 'linear-gradient(to bottom right, #805AD5, #3182CE)',
+        }}
+      >
+        <CircularProgress size="lg" sx={{ color: 'white' }} />
+      </Box>
     );
   }
 
   return (
-    <Center minH="100vh" bgGradient="linear(to-br, #805AD5, #3182CE)" p={4}>
-      <VStack spacing={6} w="full" maxW="5xl">
-        <GlassBox w="full" display="flex" justifyContent="space-between" alignItems="center">
-          <Heading as="h2" size="xl">User Dashboard</Heading>
-          <Button onClick={handleLogout} colorScheme="red" variant="outline">
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(to bottom right, #805AD5, #3182CE)',
+        p: 2,
+      }}
+    >
+      <Stack spacing={3} sx={{ width: '100%', maxWidth: '80rem' }}> {/* maxW="5xl" approx */}
+        <GlassPaper sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h5" component="h2">User Dashboard</Typography>
+          <Button onClick={handleLogout} variant="outlined" color="error">
             Logout
           </Button>
-        </GlassBox>
+        </GlassPaper>
 
-        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} w="full">
-          <GlassBox>
-            <Heading as="h3" size="md" mb={4}>Your Information</Heading>
-            <Text>Welcome, <Text as="span" fontWeight="bold">{user.username}</Text>!</Text>
-            <Text>Email: {user.email}</Text>
-            <Text>Role: <Tag size="md" variant="solid" colorScheme={user.role === 'admin' ? 'purple' : 'blue'}>{user.role}</Tag></Text>
-          </GlassBox>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <GlassPaper sx={{ height: '100%' }}>
+              <Typography variant="h6" component="h3" gutterBottom>Your Information</Typography>
+              <Typography>Welcome, <Typography component="span" fontWeight="bold">{user.username}</Typography>!</Typography>
+              <Typography>Email: {user.email}</Typography>
+              <Typography>Role: <Chip label={user.role} color={user.role === 'admin' ? 'secondary' : 'primary'} size="small" /></Typography>
+            </GlassPaper>
+          </Grid>
 
-          <GlassBox display="flex" flexDirection="column" justifyContent="center" alignItems="center">
-            <Heading as="h3" size="md" mb={4}>Time Tracking</Heading>
-            <Button
-              size="lg"
-              colorScheme={isCheckedIn ? 'orange' : 'green'}
-              onClick={isCheckedIn ? handleCheckOut : handleCheckIn}
-              isLoading={buttonLoading}
-              loadingText={isCheckedIn ? 'Checking out...' : 'Checking in...'}
-            >
-              {isCheckedIn ? 'Check Out' : 'Check In'}
-            </Button>
-          </GlassBox>
-        </SimpleGrid>
+          <Grid item xs={12} md={6}>
+            <GlassPaper sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+              <Typography variant="h6" component="h3" gutterBottom>Time Tracking</Typography>
+              <Button
+                variant="contained"
+                size="large"
+                color={isCheckedIn ? 'warning' : 'success'}
+                onClick={isCheckedIn ? handleCheckOut : handleCheckIn}
+                disabled={buttonLoading}
+                startIcon={buttonLoading ? <CircularProgress size={20} color="inherit" /> : null}
+              >
+                {isCheckedIn ? 'Check Out' : 'Check In'}
+              </Button>
+            </GlassPaper>
+          </Grid>
+        </Grid>
 
-        <GlassBox w="full">
-          <Heading as="h3" size="md" mb={4}>Last 10 Attendance Records</Heading>
+        <GlassPaper>
+          <Typography variant="h6" component="h3" gutterBottom>Last 10 Attendance Records</Typography>
           {attendance.length === 0 ? (
-            <Text textAlign="center">No attendance records found.</Text>
+            <Typography textAlign="center">No attendance records found.</Typography>
           ) : (
-            <Box overflowX="auto">
-              <Table variant="simple" size="sm">
-                <Thead>
-                  <Tr>
-                    <Th color="whiteAlpha.700">Check-In Time</Th>
-                    <Th color="whiteAlpha.700">Check-Out Time</Th>
-                    <Th color="whiteAlpha.700" isNumeric>Total Hours</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ color: 'white' }}>Check-In Time</TableCell>
+                    <TableCell sx={{ color: 'white' }}>Check-Out Time</TableCell>
+                    <TableCell align="right" sx={{ color: 'white' }}>Total Hours</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
                   {attendance.map((att) => (
-                    <Tr key={att.id}>
-                      <Td>{new Date(att.check_in).toLocaleString()}</Td>
-                      <Td>{att.check_out ? new Date(att.check_out).toLocaleString() : <Tag size="sm" colorScheme="yellow">Active</Tag>}</Td>
-                      <Td isNumeric>{att.total_hours ? att.total_hours.toFixed(2) : 'N/A'}</Td>
-                    </Tr>
+                    <TableRow key={att.id}>
+                      <TableCell>{new Date(att.check_in).toLocaleString()}</TableCell>
+                      <TableCell>
+                        {att.check_out ? (
+                          new Date(att.check_out).toLocaleString()
+                        ) : (
+                          <Chip label="Active" size="small" color="info" />
+                        )}
+                      </TableCell>
+                      <TableCell align="right">{att.total_hours ? att.total_hours.toFixed(2) : 'N/A'}</TableCell>
+                    </TableRow>
                   ))}
-                </Tbody>
+                </TableBody>
               </Table>
-            </Box>
+            </TableContainer>
           )}
-        </GlassBox>
-      </VStack>
-    </Center>
+        </GlassPaper>
+      </Stack>
+      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleSnackbarClose}>
+        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 };
 

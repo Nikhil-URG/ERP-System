@@ -40,3 +40,6 @@ docker-compose.override.yml
 GEMINI.md
 GEMINI2.md
 GEMINI*.md
+
+# Vite frontend
+frontend_old/

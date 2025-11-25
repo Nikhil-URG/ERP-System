@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8000', // URL of your FastAPI backend
+  baseURL: 'http://localhost:8001', // URL of your FastAPI backend
   headers: {
     'Content-Type': 'application/json',
   },

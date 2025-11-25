@@ -1,9 +1,9 @@
 from logging.config import fileConfig
 import os
 from dotenv import load_dotenv
+import asyncio
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 
@@ -22,11 +22,17 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 
 # Load environment variables
-load_dotenv(os.path.join(os.getcwd(), '.env'))
+# load_dotenv(os.path.join(os.getcwd(), '.env'))
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is missing! Fix your .env file.")
+
 
 # Import Base from your FastAPI app's db.py
 from app.db import Base
-from app.models import User, Attendance # Import all models here
+from app.models import user, attendance # Import all models here
 
 target_metadata = Base.metadata
 
@@ -48,9 +54,12 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        raise RuntimeError("DATABASE_URL not found. Check your .env file and load path.")
+
     context.configure(
-        url=url,
+        url=DATABASE_URL,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -60,29 +69,35 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def run_migrations_online() -> None:
+async def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
 
     In this scenario we need to create an Engine
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
+    connectable = create_async_engine(
+        DATABASE_URL,
+        echo=True,
     )
 
-    with connectable.connect() as connection:
+    def do_run_migrations(connection):
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            literal_binds=False, # Not an offline mode
+            dialect_opts={"paramstyle": "named"},
         )
-
         with context.begin_transaction():
             context.run_migrations()
+
+    async with connectable.connect() as connection:
+        await connection.run_sync(do_run_migrations)
+
+    await connectable.dispose()
 
 
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    run_migrations_online()
+    asyncio.run(run_migrations_online())

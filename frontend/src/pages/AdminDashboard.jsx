@@ -3,50 +3,46 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
-  VStack,
-  Heading,
-  Text,
-  useToast,
-  Spinner,
+  Typography,
+  Snackbar,
+  Alert,
+  CircularProgress,
   Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Tag,
-  Center,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalFooter,
-  ModalBody,
-  ModalCloseButton,
-  FormControl,
-  FormLabel,
-  Input,
-  Select,
+  TableContainer,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  Chip,
   Stack,
-  useDisclosure,
-  SimpleGrid
-} from '@chakra-ui/react';
+  Grid,
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  IconButton
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import { styled } from '@mui/material/styles';
 import apiClient from '../api/client';
 
-const GlassBox = ({ children, ...props }) => (
-  <Box
-    bg="rgba(255, 255, 255, 0.1)"
-    backdropFilter="blur(10px)"
-    border="1px solid rgba(255, 255, 255, 0.2)"
-    borderRadius="xl"
-    boxShadow="lg"
-    p={6}
-    color="whiteAlpha.900"
-    {...props}
-  >
-    {children}
-  </Box>
-);
+const GlassPaper = styled(Paper)(({ theme }) => ({
+  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  backdropFilter: 'blur(10px)',
+  border: '1px solid rgba(255, 255, 255, 0.2)',
+  borderRadius: theme.shape.borderRadius * 2,
+  boxShadow: theme.shadows[5],
+  padding: theme.spacing(3),
+  color: theme.palette.common.white,
+  position: 'relative',
+  overflow: 'hidden',
+}));
 
 const UserModal = ({ isOpen, onClose, user, onSave, isLoading }) => {
   const [username, setUsername] = useState('');
@@ -54,7 +50,9 @@ const UserModal = ({ isOpen, onClose, user, onSave, isLoading }) => {
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState('user');
   const [password, setPassword] = useState('');
-  const toast = useToast();
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('warning');
 
   useEffect(() => {
     if (user) {
@@ -71,70 +69,111 @@ const UserModal = ({ isOpen, onClose, user, onSave, isLoading }) => {
     }
   }, [user]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (!username || !email || !role || (!user && !password)) {
-        toast({
-            title: "Missing fields",
-            description: "Please fill in all required fields.",
-            status: "warning",
-            duration: 3000,
-            isClosable: true,
-        });
+        setSnackbarMessage("Please fill in all required fields.");
+        setSnackbarSeverity("warning");
+        setSnackbarOpen(true);
         return;
     }
-
     onSave({ id: user?.id, username, email, full_name: fullName, role, password: password || undefined });
   };
 
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false);
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <ModalOverlay />
-      <ModalContent bg="rgba(255, 255, 255, 0.1)" backdropFilter="blur(10px)" border="1px solid rgba(255, 255, 255, 0.2)" borderRadius="xl" boxShadow="lg" color="whiteAlpha.900">
-        <ModalHeader>{user ? 'Edit User' : 'Create User'}</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody>
-          <Stack spacing={4}>
-            <FormControl id="username" isRequired>
-              <FormLabel>Username</FormLabel>
-              <Input value={username} onChange={(e) => setUsername(e.target.value)} color="white" borderColor="whiteAlpha.400" />
-            </FormControl>
-            <FormControl id="email" isRequired>
-              <FormLabel>Email</FormLabel>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} color="white" borderColor="whiteAlpha.400" />
-            </FormControl>
-            <FormControl id="fullName">
-              <FormLabel>Full Name</FormLabel>
-              <Input value={fullName} onChange={(e) => setFullName(e.target.value)} color="white" borderColor="whiteAlpha.400" />
-            </FormControl>
-            <FormControl id="role" isRequired>
-              <FormLabel>Role</FormLabel>
-              <Select value={role} onChange={(e) => setRole(e.target.value)} color="white" borderColor="whiteAlpha.400">
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-              </Select>
-            </FormControl>
-            <FormControl id="password" isRequired={!user}>
-              <FormLabel>Password {user ? '(Leave blank to keep current)' : ''}</FormLabel>
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} color="white" borderColor="whiteAlpha.400" />
-            </FormControl>
-          </Stack>
-        </ModalBody>
-        <ModalFooter>
-          <Button variant="ghost" onClick={onClose} colorScheme="whiteAlpha">Cancel</Button>
-          <Button colorScheme="blue" ml={3} onClick={handleSubmit} isLoading={isLoading}>
-            Save
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+    <Dialog open={isOpen} onClose={onClose} PaperComponent={GlassPaper} PaperProps={{ sx: { maxWidth: 'sm' } }}>
+      <DialogTitle>
+        {user ? 'Edit User' : 'Create User'}
+        <IconButton
+          aria-label="close"
+          onClick={onClose}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            top: 8,
+            color: (theme) => theme.palette.grey[500],
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={2}>
+          <TextField
+            label="Username"
+            variant="outlined"
+            fullWidth
+            required
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <TextField
+            label="Email"
+            variant="outlined"
+            type="email"
+            fullWidth
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <TextField
+            label="Full Name"
+            variant="outlined"
+            fullWidth
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+          />
+          <FormControl fullWidth required>
+            <InputLabel id="role-select-label">Role</InputLabel>
+            <Select
+              labelId="role-select-label"
+              id="role-select"
+              value={role}
+              label="Role"
+              onChange={(e) => setRole(e.target.value)}
+            >
+              <MenuItem value="user">User</MenuItem>
+              <MenuItem value="admin">Admin</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            label={`Password ${user ? '(Leave blank to keep current)' : ''}`}
+            variant="outlined"
+            type="password"
+            fullWidth
+            required={!user}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={handleSubmit} variant="contained" disabled={isLoading}>
+          {isLoading ? <CircularProgress size={20} color="inherit" /> : 'Save'}
+        </Button>
+      </DialogActions>
+      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleSnackbarClose}>
+        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </Dialog>
   );
 };
 
 const AttendanceModal = ({ isOpen, onClose, userId, username }) => {
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [fetchLoading, setFetchLoading] = useState(true);
-  const toast = useToast();
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('error');
 
   useEffect(() => {
     if (isOpen && userId) {
@@ -145,61 +184,83 @@ const AttendanceModal = ({ isOpen, onClose, userId, username }) => {
         })
         .catch(error => {
           console.error(`Failed to fetch attendance for user ${userId}`, error);
-          toast({
-            title: "Error fetching attendance.",
-            description: error.response?.data?.detail || "Could not load attendance records.",
-            status: "error",
-            duration: 3000,
-            isClosable: true,
-          });
+          setSnackbarMessage(error.response?.data?.detail || "Could not load attendance records.");
+          setSnackbarSeverity("error");
+          setSnackbarOpen(true);
         })
         .finally(() => {
           setFetchLoading(false);
         });
     }
-  }, [isOpen, userId, toast]);
+  }, [isOpen, userId]);
+
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false);
+  };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="xl">
-      <ModalOverlay />
-      <ModalContent bg="rgba(255, 255, 255, 0.1)" backdropFilter="blur(10px)" border="1px solid rgba(255, 255, 255, 0.2)" borderRadius="xl" boxShadow="lg" color="whiteAlpha.900">
-        <ModalHeader>Attendance for {username}</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody>
-          {fetchLoading ? (
-            <Center><Spinner size="lg" /></Center>
-          ) : attendanceRecords.length === 0 ? (
-            <Text textAlign="center">No attendance records found for this user.</Text>
-          ) : (
-            <Box overflowX="auto">
-              <Table variant="simple" size="sm">
-                <Thead>
-                  <Tr>
-                    <Th color="whiteAlpha.700">Check-In Time</Th>
-                    <Th color="whiteAlpha.700">Check-Out Time</Th>
-                    <Th color="whiteAlpha.700" isNumeric>Total Hours</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {attendanceRecords.map((record) => (
-                    <Tr key={record.id}>
-                      <Td>{new Date(record.check_in).toLocaleString()}</Td>
-                      <Td>{record.check_out ? new Date(record.check_out).toLocaleString() : <Tag size="sm" colorScheme="yellow">Active</Tag>}</Td>
-                      <Td isNumeric>{record.total_hours ? record.total_hours.toFixed(2) : 'N/A'}</Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </Box>
-          )}
-        </ModalBody>
-        <ModalFooter>
-          <Button colorScheme="whiteAlpha" onClick={onClose}>
-            Close
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+    <Dialog open={isOpen} onClose={onClose} maxWidth="md" fullWidth PaperComponent={GlassPaper}>
+      <DialogTitle>
+        Attendance for {username}
+        <IconButton
+          aria-label="close"
+          onClick={onClose}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            top: 8,
+            color: (theme) => theme.palette.grey[500],
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent dividers>
+        {fetchLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress size="lg" />
+          </Box>
+        ) : attendanceRecords.length === 0 ? (
+          <Typography textAlign="center" sx={{ p: 4 }}>No attendance records found for this user.</Typography>
+        ) : (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ color: 'white' }}>Check-In Time</TableCell>
+                  <TableCell sx={{ color: 'white' }}>Check-Out Time</TableCell>
+                  <TableCell align="right" sx={{ color: 'white' }}>Total Hours</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {attendanceRecords.map((record) => (
+                  <TableRow key={record.id}>
+                    <TableCell>{new Date(record.check_in).toLocaleString()}</TableCell>
+                    <TableCell>
+                      {record.check_out ? new Date(record.check_out).toLocaleString() : <Chip label="Active" size="small" color="info" />}
+                    </TableCell>
+                    <TableCell align="right">{record.total_hours ? record.total_hours.toFixed(2) : 'N/A'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} variant="contained">
+          Close
+        </Button>
+      </DialogActions>
+      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleSnackbarClose}>
+        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </Dialog>
   );
 };
 
@@ -207,16 +268,19 @@ const AttendanceModal = ({ isOpen, onClose, userId, username }) => {
 const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const toast = useToast();
   const navigate = useNavigate();
 
-  const { isOpen: isUserModalOpen, onOpen: onUserModalOpen, onClose: onUserModalClose } = useDisclosure();
-  const { isOpen: isAttendanceModalOpen, onOpen: onAttendanceModalOpen, onClose: onAttendanceModalClose } = useDisclosure();
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
 
   const [currentUserForEdit, setCurrentUserForEdit] = useState(null);
   const [selectedUserIdForAttendance, setSelectedUserIdForAttendance] = useState(null);
   const [selectedUsernameForAttendance, setSelectedUsernameForAttendance] = useState('');
   const [saveLoading, setSaveLoading] = useState(false);
+  
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
 
   const fetchUsers = async () => {
@@ -230,13 +294,9 @@ const AdminDashboard = () => {
         localStorage.removeItem('token');
         navigate('/login');
       }
-      toast({
-        title: 'Error loading users.',
-        description: 'Please try logging in again.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      setSnackbarMessage('Error loading users. Please try logging in again.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
     } finally {
       setLoading(false);
     }
@@ -248,12 +308,12 @@ const AdminDashboard = () => {
 
   const handleCreateUser = () => {
     setCurrentUserForEdit(null);
-    onUserModalOpen();
+    setIsUserModalOpen(true);
   };
 
   const handleEditUser = (user) => {
     setCurrentUserForEdit(user);
-    onUserModalOpen();
+    setIsUserModalOpen(true);
   };
 
   const handleSaveUser = async (userData) => {
@@ -261,32 +321,22 @@ const AdminDashboard = () => {
     try {
       if (userData.id) {
         await apiClient.put(`/admin/users/${userData.id}`, userData);
-        toast({
-          title: 'User updated.',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
+        setSnackbarMessage('User updated.');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
       } else {
         await apiClient.post('/admin/users', userData);
-        toast({
-          title: 'User created.',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
+        setSnackbarMessage('User created.');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
       }
-      onUserModalClose();
+      setIsUserModalOpen(false);
       fetchUsers();
     } catch (error) {
       console.error('Failed to save user', error);
-      toast({
-        title: 'Error saving user.',
-        description: error.response?.data?.detail || 'An error occurred.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
+      setSnackbarMessage(error.response?.data?.detail || 'An error occurred during save.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
     } finally {
       setSaveLoading(false);
     }
@@ -296,22 +346,15 @@ const AdminDashboard = () => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
         await apiClient.delete(`/admin/users/${userId}`);
-        toast({
-          title: 'User deleted.',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
+        setSnackbarMessage('User deleted.');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
         fetchUsers();
       } catch (error) {
         console.error('Failed to delete user', error);
-        toast({
-          title: 'Error deleting user.',
-          description: error.response?.data?.detail || 'An error occurred.',
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
+        setSnackbarMessage(error.response?.data?.detail || 'An error occurred during deletion.');
+        setSnackbarSeverity('error');
+        setSnackbarOpen(true);
       }
     }
   };
@@ -319,7 +362,7 @@ const AdminDashboard = () => {
   const handleViewAttendance = (userId, username) => {
     setSelectedUserIdForAttendance(userId);
     setSelectedUsernameForAttendance(username);
-    onAttendanceModalOpen();
+    setIsAttendanceModalOpen(true);
   };
 
   const handleLogout = () => {
@@ -327,68 +370,92 @@ const AdminDashboard = () => {
     navigate('/login');
   };
 
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false);
+  };
+
   if (loading) {
     return (
-      <Center minH="100vh" bgGradient="linear(to-br, #E53E3E, #DD6B20)">
-        <Spinner size="xl" color="white" />
-      </Center>
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          background: 'linear-gradient(to bottom right, #E53E3E, #DD6B20)',
+        }}
+      >
+        <CircularProgress size="lg" sx={{ color: 'white' }} />
+      </Box>
     );
   }
 
   return (
-    <Center minH="100vh" bgGradient="linear(to-br, #E53E3E, #DD6B20)" p={4}>
-      <VStack spacing={6} w="full" maxW="6xl">
-        <GlassBox w="full" display="flex" justifyContent="space-between" alignItems="center">
-          <Heading as="h2" size="xl">Admin Dashboard</Heading>
-          <Button onClick={handleLogout} colorScheme="red" variant="outline">
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(to bottom right, #E53E3E, #DD6B20)',
+        p: 2,
+      }}
+    >
+      <Stack spacing={3} sx={{ width: '100%', maxWidth: '80rem' }}> {/* maxW="6xl" approx */}
+        <GlassPaper sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h5" component="h2">Admin Dashboard</Typography>
+          <Button onClick={handleLogout} variant="outlined" color="error">
             Logout
           </Button>
-        </GlassBox>
+        </GlassPaper>
 
-        <GlassBox w="full">
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-            <Heading as="h3" size="md">All Users</Heading>
-            <Button onClick={handleCreateUser} colorScheme="blue">Create New User</Button>
+        <GlassPaper>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+            <Typography variant="h6" component="h3">All Users</Typography>
+            <Button onClick={handleCreateUser} variant="contained" color="primary">Create New User</Button>
           </Box>
           {users.length === 0 ? (
-            <Text textAlign="center">No users found.</Text>
+            <Typography textAlign="center">No users found.</Typography>
           ) : (
-            <Box overflowX="auto">
-              <Table variant="simple" size="sm">
-                <Thead>
-                  <Tr>
-                    <Th color="whiteAlpha.700">Username</Th>
-                    <Th color="whiteAlpha.700">Email</Th>
-                    <Th color="whiteAlpha.700">Full Name</Th>
-                    <Th color="whiteAlpha.700">Role</Th>
-                    <Th color="whiteAlpha.700">Actions</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ color: 'white' }}>Username</TableCell>
+                    <TableCell sx={{ color: 'white' }}>Email</TableCell>
+                    <TableCell sx={{ color: 'white' }}>Full Name</TableCell>
+                    <TableCell sx={{ color: 'white' }}>Role</TableCell>
+                    <TableCell sx={{ color: 'white' }}>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
                   {users.map((user) => (
-                    <Tr key={user.id}>
-                      <Td>{user.username}</Td>
-                      <Td>{user.email}</Td>
-                      <Td>{user.full_name || 'N/A'}</Td>
-                      <Td><Tag size="sm" colorScheme={user.role === 'admin' ? 'purple' : 'blue'}>{user.role}</Tag></Td>
-                      <Td>
-                        <Stack direction={{ base: 'column', md: 'row' }} spacing={2}>
-                            <Button size="xs" colorScheme="blue" onClick={() => handleEditUser(user)}>Edit</Button>
-                            <Button size="xs" colorScheme="red" onClick={() => handleDeleteUser(user.id)}>Delete</Button>
-                            <Button size="xs" colorScheme="green" onClick={() => handleViewAttendance(user.id, user.username)}>Attendance</Button>
+                    <TableRow key={user.id}>
+                      <TableCell>{user.username}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.full_name || 'N/A'}</TableCell>
+                      <TableCell><Chip label={user.role} size="small" color={user.role === 'admin' ? 'secondary' : 'primary'} /></TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={1}>
+                            <Button size="small" variant="outlined" onClick={() => handleEditUser(user)}>Edit</Button>
+                            <Button size="small" variant="outlined" color="error" onClick={() => handleDeleteUser(user.id)}>Delete</Button>
+                            <Button size="small" variant="outlined" color="success" onClick={() => handleViewAttendance(user.id, user.username)}>Attendance</Button>
                         </Stack>
-                      </Td>
-                    </Tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </Tbody>
+                </TableBody>
               </Table>
-            </Box>
+            </TableContainer>
           )}
-        </GlassBox>
+        </GlassPaper>
 
         <UserModal
           isOpen={isUserModalOpen}
-          onClose={onUserModalClose}
+          onClose={() => setIsUserModalOpen(false)}
           user={currentUserForEdit}
           onSave={handleSaveUser}
           isLoading={saveLoading}
@@ -396,12 +463,17 @@ const AdminDashboard = () => {
 
         <AttendanceModal
           isOpen={isAttendanceModalOpen}
-          onClose={onAttendanceModalClose}
+          onClose={() => setIsAttendanceModalOpen(false)}
           userId={selectedUserIdForAttendance}
           username={selectedUsernameForAttendance}
         />
-      </VStack>
-    </Center>
+      </Stack>
+      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleSnackbarClose}>
+        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 };
 

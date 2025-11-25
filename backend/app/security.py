@@ -6,7 +6,8 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession # Import AsyncSession
+from sqlalchemy import select # Import select
 
 from app import models, schemas
 from app.core.config import settings
@@ -48,7 +49,7 @@ def decode_access_token(token: str):
         return None
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)): # Changed db to AsyncSession
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -57,7 +58,10 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     token_data = decode_access_token(token)
     if token_data is None:
         raise credentials_exception
-    user = db.query(models.User).filter(models.User.username == token_data["sub"]).first()
+    
+    result = await db.execute(select(models.User).filter(models.User.username == token_data["sub"]))
+    user = result.scalar_one_or_none()
+    
     if user is None:
         raise credentials_exception
     return user

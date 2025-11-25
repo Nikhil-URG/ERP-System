@@ -1,60 +1,87 @@
-#!/bin/bash
-
-# Exit on any error
+#!/usr/bin/env bash
 set -e
 
-# Store background PIDs
-PIDS=()
+echo "=== Starting Docker Services ==="
+docker compose up -d
 
-cleanup() {
-    echo "Stopping all services..."
-    for pid in "${PIDS[@]}"; do
-        if kill -0 "$pid" 2>/dev/null; then
-            echo "Killing PID $pid"
-            kill "$pid"
-        fi
-    done
-    echo "Stopping PostgreSQL..."
-    docker compose down
-    exit 0
-}
+# ------------------------------
+# WAIT FOR POSTGRES (multi-platform safe)
+# ------------------------------
 
-# Handle Ctrl+C
-trap cleanup SIGINT
+echo "Waiting for PostgreSQL to respond on port 5432..."
 
-echo "Starting PostgreSQL..."
-docker compose up -d db
-echo "PostgreSQL started."
+until docker exec erp-system-db-1 pg_isready -U postgres >/dev/null 2>&1; do
+  echo "Postgres not ready... waiting"
+  sleep 2
+done
 
-# --- Backend ---
-echo "Starting backend..."
+echo "PostgreSQL is up!"
+
+# ------------------------------
+# BACKEND SETUP
+# ------------------------------
+
+echo "Using backend virtual environment."
 cd backend
+
+if [ ! -d "venv" ]; then
+    echo "Creating venv..."
+    python3 -m venv venv
+fi
 
 source venv/bin/activate
 
-alembic upgrade head
-python3 seed.py
+echo "Installing backend dependencies..."
+pip install -r requirements.txt
 
-# Start uvicorn (ONLY ONE INSTANCE)
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
-PIDS+=($!)
+echo "Running Alembic migrations..."
+export DATABASE_URL="postgresql+asyncpg://erp_user:erp_password@localhost:5432/erp_db"
+alembic upgrade head
+
+echo "Running seed script..."
+python3 seed.py
+unset DATABASE_URL # Unset to allow FastAPI to pick from .env or its own environment
+
+echo "Starting FastAPI..."
+export DATABASE_URL="postgresql+asyncpg://erp_user:erp_password@localhost:5432/erp_db"
+uvicorn app.main:app --host 0.0.0.0 --port 8001 &
+FASTAPI_PID=$!
+echo "Waiting 5 seconds for FastAPI to start..."
+sleep 5
 
 cd ..
-echo "Backend started."
 
-# --- Frontend ---
-echo "Starting frontend..."
+# ------------------------------
+# WAIT FOR FASTAPI
+# ------------------------------
+
+echo "Waiting for FastAPI to start..."
+
+until curl -s http://localhost:8001/ >/dev/null 2>&1; do
+    echo "FastAPI not ready... waiting"
+    sleep 2
+done
+
+echo "FastAPI is running!"
+
+# ------------------------------
+# FRONTEND START
+# ------------------------------
+
+echo "Starting React frontend..."
 cd frontend
 
 npm install
-npm run dev &
-PIDS+=($!)
+npm start &
+FRONTEND_PID=$!
 
 cd ..
-echo "Frontend started."
 
-echo "Backend   → http://localhost:8000"
-echo "Frontend  → http://localhost:5173"
-echo "pgAdmin   → http://localhost:5050"
+echo "All services started!"
+echo "Frontend:  http://localhost:3000"
+echo "Backend:   http://localhost:8001"
+echo "PgAdmin:   http://localhost:5050"
+
+trap "echo 'Stopping...'; kill $FASTAPI_PID $FRONTEND_PID; docker compose down" EXIT
 
 wait
